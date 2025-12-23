@@ -4,7 +4,6 @@
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "led_strip.h"
-#include "LED.h"
 #define GPIO_RGB GPIO_NUM_0
 #define GPIO_BUTTON GPIO_NUM_48 
 static const uint16_t breath_table[]={// 呼吸表

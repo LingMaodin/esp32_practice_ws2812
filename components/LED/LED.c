@@ -13,7 +13,7 @@ void led_init(gpio_num_t gpio_num)
         .intr_type=GPIO_INTR_DISABLE
     };
     err = gpio_config(&gpio);
-    if (err!=ESP_OK)
+    if (err!=ESP_OK)//也可以直接ESP_ERROR_CHECK(gpio_config(&gpio)); 
     {
         printf("GPIO Config Failed\n");
     }
