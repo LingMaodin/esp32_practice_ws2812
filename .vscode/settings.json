@@ -5,7 +5,7 @@
   "idf.openOcdConfigs": [
     "board/esp32s3-builtin.cfg"
   ],
-  "idf.portWin": "COM5",
+  "idf.portWin": "COM3",
   "idf.toolsPathWin": "c:\\ESP32\\.esp32",
   "idf.customExtraVars": {
     "IDF_TARGET": "esp32s3"
@@ -20,5 +20,6 @@
   "files.associations": {
     "task.h": "c",
     "gpio.h": "c"
-  }
+  },
+  "idf.currentSetup": "c:\\ESP32\\v5.5.1\\esp-idf"
 }

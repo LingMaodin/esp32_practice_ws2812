@@ -4,8 +4,8 @@
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "led_strip.h"
-#define GPIO_RGB GPIO_NUM_0
-#define GPIO_BUTTON GPIO_NUM_48 
+#define GPIO_RGB GPIO_NUM_48
+#define GPIO_BUTTON GPIO_NUM_0
 static const uint16_t breath_table[]={// 呼吸表
     0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  2,  3,  5,  7,  9, 12,
     16, 21, 27, 35, 43, 53, 65, 79, 95,113,133,156,182,211,244,279,
@@ -26,8 +26,9 @@ static const uint16_t breath_table[]={// 呼吸表
 };
 
 led_strip_handle_t led_strip;// LED句柄
+static uint16_t hue = 0;// 色相初始值
 
-void button_init()// LED初始化
+void button_init()// 按键初始化
 {
     gpio_config_t gpio = {
         .pin_bit_mask = (1ULL << GPIO_BUTTON),  // 初始化引脚
@@ -53,41 +54,38 @@ void RGB_init()// RGB灯珠初始化
     led_strip_clear(led_strip);// 清除灯珠显示
 }
 
-void breath_light() // 彩虹呼吸灯
+void breath()// 呼吸灯
 {
-    static uint8_t steps=0,value=0,speed_delay=0;
-    static uint16_t hue=0;
+    static uint8_t steps=0,value=0;
     value=breath_table[steps]/256;//亮度归一化=呼吸表值/256
-    led_strip_set_pixel_hsv(led_strip, 0, hue, 255, value);//设置HSV颜色
+    led_strip_set_pixel_hsv(led_strip, 0, hue, 255, value);
+    led_strip_refresh(led_strip);
+    vTaskDelay(pdMS_TO_TICKS(20));//延时20ms
+    steps++;
+}
+
+void rainbow() // 彩虹渐变
+{
+    led_strip_set_pixel_hsv(led_strip, 0, hue, 255, 85);//设置HSV颜色
     led_strip_refresh(led_strip);//刷新显示
     vTaskDelay(pdMS_TO_TICKS(20));//延时20ms
-    if(speed_delay>=2)//色相变化延迟
-    {
-        hue++;//色相+1
-        speed_delay=0;
-    }
-    speed_delay++;
-    steps++;    
-    if (hue >= 360)
-        hue = 0;
-    return;
+    hue++;
+    if(hue>=360) hue=0;//色相循环
 }
 
 void app_main(void)
 {
     RGB_init();
-    gpio_init();
+    button_init();
     while (1)
     {
-        if (gpio_get_level(GPIO_BUTTON) == 1)//常态彩虹呼吸灯
+        if (gpio_get_level(GPIO_BUTTON) == 1)//常态呼吸灯
         {
-            breath_light();
+            breath();
         }
-        else//按下白光灯
+        else//按下彩虹渐变
         {
-            led_strip_set_pixel(led_strip, 0, 30, 30, 30);
-            led_strip_refresh(led_strip);
-            vTaskDelay(pdMS_TO_TICKS(100));
+            rainbow();
         }
     }
 }
