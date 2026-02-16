@@ -4,7 +4,7 @@
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "led_strip.h"
-#define GPIO_RGB GPIO_NUM_48
+#define GPIO_LED GPIO_NUM_48
 #define GPIO_BUTTON GPIO_NUM_0
 static const uint16_t breath_table[]={// 呼吸表
     0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  2,  3,  5,  7,  9, 12,
@@ -25,49 +25,49 @@ static const uint16_t breath_table[]={// 呼吸表
     16, 12,  9,  7,  5,  3,  2,  1,  1,  0,  0,  0,  0,  0,  0,  0,
 };
 
-led_strip_handle_t led_strip;// LED句柄
+led_strip_handle_t ws2812_hdl;// LED句柄
 static uint16_t hue = 0;// 色相初始值
 
 void button_init()// 按键初始化
 {
-    gpio_config_t gpio = {
+    gpio_config_t gpio_cfg = {
         .pin_bit_mask = (1ULL << GPIO_BUTTON),  // 初始化引脚
         .mode = GPIO_MODE_INPUT,               // 模式
         .pull_up_en = GPIO_PULLUP_ENABLE,      // 上拉
         .pull_down_en = GPIO_PULLDOWN_DISABLE, // 下拉
         .intr_type = GPIO_INTR_DISABLE         // 中断
     };
-    ESP_ERROR_CHECK(gpio_config(&gpio)); // 是否成功判断
+    ESP_ERROR_CHECK(gpio_config(&gpio_cfg)); // 配置GPIO
 }
 
-void RGB_init()// RGB灯珠初始化
+void ws2812_init()// LED灯珠初始化
 {
-    led_strip_config_t RGB =
+    led_strip_config_t ws2812_cfg =
         {
-            .strip_gpio_num = GPIO_RGB,                               // 连接引脚
+            .strip_gpio_num = GPIO_LED,                               // 连接引脚
             .max_leds = 1,                                               // 灯珠数量
             .led_model = LED_MODEL_WS2812,                               // 灯珠型号
             .color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_GRB, // 传输颜色顺序
         };
-    led_strip_rmt_config_t rmt = {};                                   // RMT（红外遥控）时钟配置
-    ESP_ERROR_CHECK(led_strip_new_rmt_device(&RGB, &rmt, &led_strip)); // 是否成功判断
-    led_strip_clear(led_strip);// 清除灯珠显示
+    led_strip_rmt_config_t rmt_cfg = {};                                   // RMT（红外遥控）时钟配置
+    ESP_ERROR_CHECK(led_strip_new_rmt_device(&ws2812_cfg, &rmt_cfg, &ws2812_hdl)); // 新建rmt并判断是否成功
+    ESP_ERROR_CHECK(led_strip_clear(ws2812_hdl));// 清除灯珠显示
 }
 
 void breath()// 呼吸灯
 {
     static uint8_t steps=0,value=0;
     value=breath_table[steps]/256;//亮度归一化=呼吸表值/256
-    led_strip_set_pixel_hsv(led_strip, 0, hue, 255, value);
-    led_strip_refresh(led_strip);
+    ESP_ERROR_CHECK(led_strip_set_pixel_hsv(ws2812_hdl, 0, hue, 255, value));
+    ESP_ERROR_CHECK(led_strip_refresh(ws2812_hdl));
     vTaskDelay(pdMS_TO_TICKS(20));//延时20ms
     steps++;
 }
 
 void rainbow() // 彩虹渐变
 {
-    led_strip_set_pixel_hsv(led_strip, 0, hue, 255, 85);//设置HSV颜色
-    led_strip_refresh(led_strip);//刷新显示
+    ESP_ERROR_CHECK(led_strip_set_pixel_hsv(ws2812_hdl, 0, hue, 255, 85));//设置HSV颜色
+    ESP_ERROR_CHECK(led_strip_refresh(ws2812_hdl));//刷新显示
     vTaskDelay(pdMS_TO_TICKS(20));//延时20ms
     hue++;
     if(hue>=360) hue=0;//色相循环
@@ -75,7 +75,7 @@ void rainbow() // 彩虹渐变
 
 void app_main(void)
 {
-    RGB_init();
+    ws2812_init();
     button_init();
     while (1)
     {
