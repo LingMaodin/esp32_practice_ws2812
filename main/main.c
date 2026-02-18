@@ -3,6 +3,7 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
+#include "driver/gpio_filter.h"
 #include "led_strip.h"
 #define GPIO_LED GPIO_NUM_48
 #define GPIO_BUTTON GPIO_NUM_0
@@ -25,7 +26,8 @@ static const uint16_t breath_table[]={// 呼吸表
     16, 12,  9,  7,  5,  3,  2,  1,  1,  0,  0,  0,  0,  0,  0,  0,
 };
 
-led_strip_handle_t ws2812_hdl;// LED句柄
+led_strip_handle_t ws2812_hdl=NULL;// LED句柄
+gpio_glitch_filter_handle_t gpio_filter_hdl=NULL;// GPIO毛刺过滤器句柄
 static uint16_t hue = 0;// 色相初始值
 static volatile bool button = false;//全局标志位记录按键状态 volatile确保isr修改变量能被main正确读取
 
@@ -44,8 +46,14 @@ void button_init()// 按键初始化
         .intr_type = GPIO_INTR_LOW_LEVEL         // 开启中断，低电平触发
     };
     ESP_ERROR_CHECK(gpio_config(&gpio_cfg)); // 配置GPIO
-    ESP_ERROR_CHECK(gpio_install_isr_service(0));// 安装GPIO中断
-    ESP_ERROR_CHECK(gpio_isr_handler_add(GPIO_BUTTON, gpio_isr_fuction_hdl, NULL));// 添加GPIO中断处理函数
+    ESP_ERROR_CHECK(gpio_install_isr_service(0));// 安装GPIO中断，终端服务使用默认优先级0
+    ESP_ERROR_CHECK(gpio_isr_handler_add(GPIO_BUTTON, gpio_isr_fuction_hdl, NULL));// 给按钮引脚添加GPIO中断处理函数，不传入参数
+    
+    gpio_pin_glitch_filter_config_t gpio_filter_cfg={// 配置GPIO毛刺过滤器
+        .gpio_num=GPIO_BUTTON,// 过滤器作用于按钮引脚
+    };
+    ESP_ERROR_CHECK(gpio_new_pin_glitch_filter(&gpio_filter_cfg,&gpio_filter_hdl));// 创建GPIO毛刺过滤器并判断是否成功
+    ESP_ERROR_CHECK(gpio_glitch_filter_enable(gpio_filter_hdl));// 使能GPIO毛刺过滤器
 }
 
 void ws2812_init()// LED灯珠初始化
