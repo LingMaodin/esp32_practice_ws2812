@@ -27,6 +27,12 @@ static const uint16_t breath_table[]={// 呼吸表
 
 led_strip_handle_t ws2812_hdl;// LED句柄
 static uint16_t hue = 0;// 色相初始值
+static volatile bool button = false;//全局标志位记录按键状态 volatile确保isr修改变量能被main正确读取
+
+void gpio_isr_fuction_hdl(void *arg)// GPIO中断处理函数
+{
+    button^=1;// 切换按键状态
+}   
 
 void button_init()// 按键初始化
 {
@@ -35,9 +41,11 @@ void button_init()// 按键初始化
         .mode = GPIO_MODE_INPUT,               // 模式
         .pull_up_en = GPIO_PULLUP_ENABLE,      // 上拉
         .pull_down_en = GPIO_PULLDOWN_DISABLE, // 下拉
-        .intr_type = GPIO_INTR_DISABLE         // 中断
+        .intr_type = GPIO_INTR_LOW_LEVEL         // 开启中断，低电平触发
     };
     ESP_ERROR_CHECK(gpio_config(&gpio_cfg)); // 配置GPIO
+    ESP_ERROR_CHECK(gpio_install_isr_service(0));// 安装GPIO中断
+    ESP_ERROR_CHECK(gpio_isr_handler_add(GPIO_BUTTON, gpio_isr_fuction_hdl, NULL));// 添加GPIO中断处理函数
 }
 
 void ws2812_init()// LED灯珠初始化
@@ -66,7 +74,7 @@ void breath()// 呼吸灯
 
 void rainbow() // 彩虹渐变
 {
-    ESP_ERROR_CHECK(led_strip_set_pixel_hsv(ws2812_hdl, 0, hue, 255, 85));//设置HSV颜色
+    ESP_ERROR_CHECK(led_strip_set_pixel_hsv(ws2812_hdl, 0, hue, 255, 43));//设置HSV颜色
     ESP_ERROR_CHECK(led_strip_refresh(ws2812_hdl));//刷新显示
     vTaskDelay(pdMS_TO_TICKS(20));//延时20ms
     hue++;
@@ -79,13 +87,9 @@ void app_main(void)
     button_init();
     while (1)
     {
-        if (gpio_get_level(GPIO_BUTTON) == 1)//常态呼吸灯
-        {
-            breath();
-        }
-        else//按下彩虹渐变
-        {
+        if (button==true)
             rainbow();
-        }
+        else
+            breath();
     }
 }
