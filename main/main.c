@@ -31,22 +31,22 @@ gpio_glitch_filter_handle_t gpio_filter_hdl=NULL;// GPIO毛刺过滤器句柄
 static uint16_t hue = 0;// 色相初始值
 static volatile bool button = false;//全局标志位记录按键状态 volatile确保isr修改变量能被main正确读取
 
-void gpio_isr_fuction_hdl(void *arg)// GPIO中断处理函数
+void IRAM_ATTR gpio_isr_fuction_hdl(void *arg)// GPIO中断处理函数
 {
-    button^=1;// 切换按键状态
+    button=~button;// 切换按键状态
 }   
 
-void button_init()// 按键初始化
+void button_init()// 按键初始化：下降沿触发防止按下后反复触发
 {
     gpio_config_t gpio_cfg = {
         .pin_bit_mask = (1ULL << GPIO_BUTTON),  // 初始化引脚
         .mode = GPIO_MODE_INPUT,               // 模式
         .pull_up_en = GPIO_PULLUP_ENABLE,      // 上拉
         .pull_down_en = GPIO_PULLDOWN_DISABLE, // 下拉
-        .intr_type = GPIO_INTR_LOW_LEVEL         // 开启中断，低电平触发
+        .intr_type = GPIO_INTR_NEGEDGE         // 开启中断，下降沿触发
     };
     ESP_ERROR_CHECK(gpio_config(&gpio_cfg)); // 配置GPIO
-    ESP_ERROR_CHECK(gpio_install_isr_service(0));// 安装GPIO中断，终端服务使用默认优先级0
+    ESP_ERROR_CHECK(gpio_install_isr_service(0));// 安装GPIO中断，中断服务使用默认优先级0
     ESP_ERROR_CHECK(gpio_isr_handler_add(GPIO_BUTTON, gpio_isr_fuction_hdl, NULL));// 给按钮引脚添加GPIO中断处理函数，不传入参数
     
     gpio_pin_glitch_filter_config_t gpio_filter_cfg={// 配置GPIO毛刺过滤器
